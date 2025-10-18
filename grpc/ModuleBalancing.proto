@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+option go_package = "/grpc";
+
+package ModuleBalancing;
+
+service Module {
+  rpc Upload (stream UploadRequest) returns (UploadResponse);
+  rpc Push(ModuleDownloadRequest) returns (stream ModulePushResponse);
+}
+
+message ModuleDownloadRequest {
+  string serveraddress = 1;
+  string filename = 2;
+  int64 offset = 3;
+}
+
+message ModulePushResponse {
+  bytes  content = 4;
+  bool   completed = 3;
+}
+
+message UploadRequest {
+  oneof data {
+    finformation information = 1;
+    bytes chunk_data = 2;
+  }
+}
+
+message finformation {
+  string filename = 1;
+  string size = 2;
+  string crc64 = 3;
+  string MUnix = 4;
+  string CUnix = 5;
+}
+
+message UploadResponse {
+  string message = 1;
+  bool success = 2;
+}
