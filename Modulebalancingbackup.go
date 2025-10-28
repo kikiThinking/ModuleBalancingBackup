@@ -102,6 +102,15 @@ func init() {
 		MinLevel:     logmanager.INFO,
 	})
 
+	// 初始化日志
+	logmar.RegisterBusiness(logmanager.LoggerConfig{
+		BusinessName: "Reload",
+		LogDir:       fmt.Sprintf(strings.Join([]string{readrunpath(), "logs", "reload"}, `\`)),
+		MaxSize:      1,
+		MaxBackups:   90,
+		MinLevel:     logmanager.INFO,
+	})
+
 	servicesconfiguration = new(env.Configuration)
 	if err = yaml.Unmarshal(f, servicesconfiguration); err != nil {
 		panic(err)
@@ -136,6 +145,13 @@ func init() {
 	if err = dbcontrol.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci").AutoMigrate(db.AutoMigrate()...); err != nil {
 		panic(err)
 	}
+
+	diskfree, err := env.GetDiskSpace(filepath.VolumeName(servicesconfiguration.Setting.Common))
+	if err != nil {
+		fmt.Println("Get DiskSpace error:", err)
+	}
+
+	fmt.Printf("Disk free: %dGB\r\n", diskfree/(1<<30))
 }
 
 func main() {

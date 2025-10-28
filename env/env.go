@@ -34,6 +34,7 @@ type Configuration struct {
 		Expiration      int64  `yaml:"Expiration"`
 		CheckExpiration int64  `yaml:"CheckExpiration"`
 		CheckUnwanted   int64  `yaml:"CheckUnwanted"`
+		ReserveSize     int64  `yaml:"ReserveSize"`
 		Common          string `yaml:"Common"`
 	} `yaml:"Setting"`
 	Database struct {
@@ -476,4 +477,21 @@ func Changefiletime(fp string, munix, cunix int64) error {
 	Rtime := ParseWindowsTime(time.Now())
 	defer syscall.CloseHandle(handle)
 	return syscall.SetFileTime(handle, &Ctime, &Rtime, &Mtime)
+}
+
+func GetDiskSpace(path string) (uint64, error) {
+	var total, free, available uint64
+
+	// Windows 系统
+	pathPtr, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return 0, err
+	}
+
+	err = windows.GetDiskFreeSpaceEx(pathPtr, &available, &total, &free)
+	if err != nil {
+		return 0, err
+	}
+
+	return free, nil
 }

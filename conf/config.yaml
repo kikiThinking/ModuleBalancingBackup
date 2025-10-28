@@ -2,6 +2,7 @@
 #Expiration         --> 本地文件超时时间
 #CheckExpiration    --> 检查本地文件是否超时的频率
 #Common             --> 本地存放Module的路径
+#ReserveSize        --> 磁盘空间小于预留大小 不再接受备份
 
 #Database:
 #Host               --> 数据库主机地址
@@ -16,12 +17,13 @@
 Setting:
   Expiration: 180
   CheckExpiration: 24
-  Common: E:\Backserver\common
+  Common: C:\Backserver\common
+  ReserveSize: 121213121
 
 
 Database:
   Host: localhost
-  Port: 3305
+  Port: 3306
   Username: root
   Password: Qaqaqa00.0
 

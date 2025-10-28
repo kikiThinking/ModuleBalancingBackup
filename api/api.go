@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/redmask-hb/GoSimplePrint/goPrint"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -171,12 +172,13 @@ func (the *ModuleBalancing) Push(request *rpc.ModuleDownloadRequest, stream rpc.
 		return status.Errorf(codes.Internal, "failed to send chunk: %v", err)
 	}
 
-	if err = the.Dbcontrol.Where(`id = ?`, module.ID).Delete(&db.Module{}).Error; err != nil {
+	if err = the.Dbcontrol.Model(db.Module{}).Where(`id = ?`, module.ID).
+		Updates(
+			map[string]interface{}{
+				"expiration": time.Now().Add(time.Minute * 3).Format("2006-01-02 15:04:05"),
+			}).Error; err != nil {
+		fmt.Println(err.Error())
 		return status.Errorf(codes.Internal, "failed to delete database record %s: %v", request.Filename, err)
-	}
-
-	if err = os.Remove(fp); err != nil {
-		return status.Errorf(codes.Internal, "failed to delete file %s: %v", fp, err)
 	}
 
 	return nil
@@ -301,4 +303,57 @@ func (the *ModuleBalancing) Upload(stream rpc.Module_UploadServer) error {
 			bar.PrintBar(int(size / 1024 / 1024))
 		}
 	}
+}
+
+func (the *ModuleBalancing) ModuleReload(_ context.Context, request *rpc.ModuleReloadRequest) (*rpc.EmptyResponse, error) {
+	the.Logmar.GetLogger("Reload").Info(fmt.Sprintf("reload filename(%s)", request.Filename))
+
+	var module = new(db.Module)
+	if err = the.Dbcontrol.Model(module).Where(db.Module{Name: request.Filename}).Find(module).Error; err != nil {
+		the.Logmar.GetLogger("Reload").Error(fmt.Sprintf("Failed to reload file %s", err.Error()))
+		return &rpc.EmptyResponse{}, err
+	}
+
+	var (
+		crc  uint64
+		size int64
+	)
+
+	crc, size, err = env.CRC64(strings.Join([]string{the.Configuration.Setting.Common, request.Filename}, `\`), 128*1024*1024, 8)
+	if err != nil {
+		the.Logmar.GetLogger("Reload").Error(fmt.Sprintf("Failed to calculate CRC64 %s", err.Error()))
+		return &rpc.EmptyResponse{}, err
+	}
+
+	the.Logmar.GetLogger("Reload").Info(fmt.Sprintf("File(%s) CRC64: (%s)  ----> (%s)", request.Filename, strconv.FormatUint(module.CRC64, 10), strconv.FormatUint(crc, 10)))
+
+	if err = the.Dbcontrol.Model(module).
+		Where(db.Module{Name: request.Filename}).
+		Updates(map[string]interface{}{
+			"crc64": crc,
+			"size":  size,
+		}).Error; err != nil {
+		the.Logmar.GetLogger("Reload").Error(fmt.Sprintf("Failed to update database %s", err.Error()))
+		return &rpc.EmptyResponse{}, err
+	}
+
+	return &rpc.EmptyResponse{}, nil
+}
+
+func (the *ModuleBalancing) AllowStorage(_ context.Context, request *rpc.AllowStorageRequest) (*rpc.AllowStorageResponse, error) {
+	var free uint64
+	free, err = env.GetDiskSpace(filepath.VolumeName(the.Configuration.Setting.Common))
+	if err != nil {
+		the.Logmar.GetLogger("AllowStorage").Error(err.Error())
+		return &rpc.AllowStorageResponse{
+			Allow: false,
+		}, err
+	}
+
+	// 剩下容量小于5GB 拒绝存储 // 总容量减去预留的5GB小于需要存储文件的大小 拒绝存储
+	if free < uint64(42949672960) || uint64(request.Size) > (free-uint64(42949672960)) {
+		return &rpc.AllowStorageResponse{Allow: false}, nil
+	}
+
+	return &rpc.AllowStorageResponse{Allow: true}, nil
 }

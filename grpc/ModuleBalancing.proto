@@ -7,7 +7,24 @@ package ModuleBalancing;
 service Module {
   rpc Upload (stream UploadRequest) returns (UploadResponse);
   rpc Push(ModuleDownloadRequest) returns (stream ModulePushResponse);
+  rpc ModuleReload(ModuleReloadRequest) returns (EmptyResponse);
+  rpc AllowStorage(AllowStorageRequest) returns (AllowStorageResponse);
 }
+
+message AllowStorageRequest {
+  int64 size = 1;
+}
+
+message AllowStorageResponse {
+  bool allow = 1;
+}
+
+message ModuleReloadRequest {
+  string filename = 1;
+  string serverip = 2;
+}
+
+message EmptyResponse {}
 
 message ModuleDownloadRequest {
   string serveraddress = 1;
