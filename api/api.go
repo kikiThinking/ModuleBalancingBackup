@@ -351,7 +351,7 @@ func (the *ModuleBalancing) AllowStorage(_ context.Context, request *rpc.AllowSt
 	}
 
 	// 剩下容量小于5GB 拒绝存储 // 总容量减去预留的5GB小于需要存储文件的大小 拒绝存储
-	if free < uint64(42949672960) || uint64(request.Size) > (free-uint64(42949672960)) {
+	if free < uint64(the.Configuration.Setting.ReserveSize) || uint64(request.Size) > (free-uint64(the.Configuration.Setting.ReserveSize)) {
 		return &rpc.AllowStorageResponse{Allow: false}, nil
 	}
 

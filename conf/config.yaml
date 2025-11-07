@@ -18,7 +18,7 @@ Setting:
   Expiration: 180
   CheckExpiration: 24
   Common: C:\Backserver\common
-  ReserveSize: 121213121
+  ReserveSize: 42949672960
 
 
 Database:
